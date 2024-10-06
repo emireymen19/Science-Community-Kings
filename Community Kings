@@ -1,0 +1,44 @@
+import geopandas as gpd
+import matplotlib.pyplot as plt
+import folium
+
+# Örnek veri: Sera gazı yoğunluk verilerini içeren bir GeoDataFrame oluşturun
+# Gerçek bir veri seti kullanmak için uygun bir veri kaynağından veri alın.
+data = {
+    'Country': ['USA', 'China', 'India', 'Germany', 'Brazil'],
+    'GHG_Emissions': [5000, 10000, 3000, 800, 2000]  # milyon ton cinsinden
+}
+
+# GeoDataFrame oluştur
+gdf = gpd.GeoDataFrame(data)
+
+# Dünya haritasını oluştur
+world = gpd.read_file(gpd.datasets.get_path('naturalearth_lowres'))
+
+# GHG verilerini dünya haritasına ekleyin
+world = world.merge(gdf, how="left", left_on="name", right_on="Country")
+
+# Haritayı görselleştir
+fig, ax = plt.subplots(1, 1, figsize=(15, 10))
+world.boundary.plot(ax=ax)
+world.plot(column='GHG_Emissions', ax=ax, legend=True,
+           legend_kwds={'label': "Sera Gazı Emisyonları (milyon ton)",
+                        'orientation': "horizontal"},
+           cmap='OrRd')
+
+plt.title('Dünya Sera Gazı Emisyon Yoğunluğu Haritası')
+plt.show()
+
+# Folium kullanarak etkileşimli harita oluştur
+m = folium.Map(location=[20, 0], zoom_start=2)
+
+# Ülkeleri haritaya ekle
+for _, row in world.iterrows():
+    folium.Marker(
+        location=[row.geometry.centroid.y, row.geometry.centroid.x],
+        popup=f"{row['Country']}: {row['GHG_Emissions']} milyon ton",
+        icon=folium.Icon(color='green' if row['GHG_Emissions'] < 2000 else 'orange' if row['GHG_Emissions'] < 5000 else 'red')
+    ).add_to(m)
+
+# Haritayı kaydet
+m.save("sera_gazi_emisyon_haritasi.html")
